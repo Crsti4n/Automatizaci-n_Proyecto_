@@ -1,0 +1,94 @@
+networks:
+  app-network:
+    driver: bridge
+
+services:
+  db:
+    image: postgres:latest
+    container_name: postgres-db
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-container
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - app-network
+
+  backend:
+    build: ./backend
+    container_name: python-backend
+    restart: always
+    depends_on:
+      - db
+      - rabbitmq
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/mydb
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/backend
+    networks:
+      - app-network
+
+  frontend:
+    build: ./vue-app
+    container_name: vue-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./vue-app:/vue-app
+    networks:
+      - app-network
+
+  consumer1:
+    build: ./backend
+    container_name: consumer-1
+    restart: always
+    depends_on:
+      - backend
+    command: python consumer1.py
+    networks:
+      - app-network
+
+  consumer2:
+    build: ./backend
+    container_name: consumer-2
+    restart: always
+    depends_on:
+      - backend
+    command: python consumer2.py
+    networks:
+      - app-network
+
+  producer:
+    build: ./backend
+    container_name: producer
+    restart: always
+    depends_on:
+      - backend
+    command: python producer.py
+    networks:
+      - app-network
+
+volumes:
+  pg_data:
+  rabbitmq_data:

@@ -1,0 +1,88 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+      
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Ejecutar Pruebas Unitarias
+        run: |
+          cd backend
+          pytest --junitxml=report.xml
+
+  integration-tests:
+    name: Test BD y RabbitMQ
+    runs-on: ubuntu-latest
+    needs: test-backend
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - 5672:5672
+          - 15672:15672
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Pruebas de Integración
+        run: |
+          cd backend
+          pytest tests/integration --junitxml=report.xml
+
+  deploy:
+    name: Deploy & E2E Tests
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+
+      - name: Construir y Levantar Servicios
+        run: |
+          docker-compose up -d --build
+
+      - name: Ejecutar Pruebas E2E
+        run: |
+          cd vue-app
+          npm install
+          npx playwright test --reporter=html
+
+
+      - name: Desplegar en Servidor (Opcional)
+        if: success()
+        run: |
+          echo "Desplegando en servidor..."
