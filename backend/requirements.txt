@@ -1,5 +1,5 @@
 fastapi
 uvicorn
 pika
-
 websockets
+pytest
