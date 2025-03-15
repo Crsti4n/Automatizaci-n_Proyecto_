@@ -12,6 +12,15 @@ jobs:
   unit-tests:
     name: Pruebas Unitarias
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: mydb
+        ports:
+          - 5432:5432
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -26,6 +35,9 @@ jobs:
           cd backend
           pip install -r requirements.txt
           pip install httpx
+
+      - name: Esperar a que PostgreSQL esté listo
+        run: sleep 15  # Ajusta el tiempo según sea necesario
 
       - name: Ejecutar Pruebas Unitarias
         run: |
@@ -118,4 +130,3 @@ jobs:
         if: success()
         run: |
           echo "Desplegando en servidor..."
- 
