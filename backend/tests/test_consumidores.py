@@ -4,8 +4,8 @@ sys.path.append("/backend")
 import json
 import pytest
 from unittest.mock import patch
-from consumer1 import callback as callback1
-from consumer2 import callback as callback2
+from backend.consumer1 import callback as callback1
+from backend.consumer2 import callback as callback2
 
 @pytest.fixture
 def test_message1():

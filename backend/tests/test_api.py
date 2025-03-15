@@ -2,7 +2,7 @@ import sys
 sys.path.append("/backend")  # Asegura que el backend esté en el path de Python
 
 from fastapi.testclient import TestClient
-from app import app
+from backend.app import app
 import pytest
 import app as app_module
 

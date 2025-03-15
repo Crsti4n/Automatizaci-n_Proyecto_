@@ -29,9 +29,8 @@ jobs:
 
       - name: Ejecutar Pruebas Unitarias
         run: |
-          cd backend
-          pytest tests/test_api.py tests/test_consumidores.py --junitxml=report_unit.xml
-          
+          pytest backend/tests/test_api.py backend/tests/test_consumidores.py --junitxml=report_unit.xml
+        
   integration-tests:
     name: Test BD y RabbitMQ
     runs-on: ubuntu-latest
