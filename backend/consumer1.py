@@ -1,35 +1,81 @@
-import pika  # Cliente de RabbitMQ
-import json  # Para manejar datos en formato JSON
-import asyncio  # Para manejar tareas asíncronas
-import websockets  # Para enviar mensajes a la interfaz en tiempo real
+import pika
+import json
+import asyncio
+import websockets
+from sqlalchemy.orm import sessionmaker
+from app import Ropa, SessionLocal  # Importamos el modelo y la sesión
+
+# Configuración de RabbitMQ
+RABBITMQ_HOST = "rabbitmq-container"
+QUEUE_NAME = "ropa"
 
 async def enviar_websocket(mensaje):
-    """Función asíncrona para enviar mensajes a WebSocket de Consumer 1"""
-    uri = "ws://python-rabbitmq-container:8000/ws/consumer1"
+    """Envía mensajes al WebSocket del Consumer 1."""
+    uri = "ws://python-backend:8000/ws/consumer1"
 
     try:
         async with websockets.connect(uri) as websocket:
-            await websocket.send(mensaje)  # Enviar mensaje JSON al WebSocket
-            print(f"✅ Mensaje enviado al WebSocket: {mensaje}")
+            await websocket.send(mensaje)
+            print(f"✅ [Consumer 1] Mensaje enviado al WebSocket: {mensaje}")
     except Exception as e:
-        print(f"❌ Error enviando mensaje al WebSocket: {e}")
+        print(f"❌ [Consumer 1] Error enviando mensaje al WebSocket: {e}")
+
+def guardar_en_bd(producto):
+    """Guarda el producto en la base de datos antes de confirmarlo en RabbitMQ."""
+    db = SessionLocal()
+    try:
+        nuevo_producto = Ropa(
+            tipo=producto["tipo"],
+            color=producto["color"],
+            talla=producto["talla"],
+            precio=producto["precio"]
+        )
+        db.add(nuevo_producto)
+        db.commit()
+        print(f"✅ [Consumer 1] Producto guardado en BD: {producto}")
+    except Exception as e:
+        print(f"❌ [Consumer 1] Error guardando en BD: {e}")
+        db.rollback()
+    finally:
+        db.close()
 
 def callback(ch, method, properties, body):
-    """Callback que se ejecuta al recibir un mensaje de RabbitMQ"""
-    ropa = json.loads(body)  # Convertir mensaje de JSON a diccionario
-    print(f"[x] Consumidor 1 recibió: {ropa}")
-    asyncio.run(enviar_websocket(json.dumps(ropa)))  # Enviar mensaje a WebSocket
+    """Procesa mensajes de RabbitMQ y los guarda en la BD antes de confirmarlos."""
+    try:
+        producto = json.loads(body)
+        print(f"[Consumer 1] 📥 Mensaje recibido: {producto}")
 
-# Conectar a RabbitMQ
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq-container'))
-channel = connection.channel()
+        # Guardar en PostgreSQL
+        guardar_en_bd(producto)
 
-# Asegurar que la cola "ropa" existe
-channel.queue_declare(queue='ropa')
+        # Enviar a WebSocket
+        asyncio.run(enviar_websocket(json.dumps(producto)))
 
-# Suscribirse a la cola y definir la función callback para procesar los mensajes
-channel.basic_consume(queue='ropa', on_message_callback=callback, auto_ack=True)
+        # Confirmar recepción del mensaje
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+        print(f"✅ [Consumer 1] Mensaje confirmado en RabbitMQ")
 
-print("[*] Esperando mensajes en Consumer 1. Para salir presiona CTRL+C")
-channel.start_consuming()  # Inicia el consumo de mensajes (bloquea ejecución)
+    except Exception as e:
+        print(f"❌ [Consumer 1] Error procesando mensaje: {e}")
 
+def iniciar_consumidor():
+    """Inicia el Consumer 1 en la cola 'ropa'."""
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+    channel = connection.channel()
+    channel.queue_declare(queue=QUEUE_NAME, durable=True)
+
+    # Filtra productos solo de ciertos tipos
+    def filtro_callback(ch, method, properties, body):
+        producto = json.loads(body)
+        if producto["tipo"].lower() in ["camiseta", "pantalón", "chaqueta"]:
+            callback(ch, method, properties, body)
+        else:
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+
+    channel.basic_consume(queue=QUEUE_NAME, on_message_callback=filtro_callback)
+
+    print(f"🔄 [Consumer 1] Esperando mensajes...")
+    channel.start_consuming()
+
+if __name__ == "__main__":
+    iniciar_consumidor()

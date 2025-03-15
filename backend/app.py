@@ -127,7 +127,7 @@ def start_consumer():
     """Se conecta a RabbitMQ y escucha la cola 'ropa' en un hilo separado"""
     connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq-container"))
     channel = connection.channel()
-    channel.queue_declare(queue="ropa")
+    channel.queue_declare(queue="ropa", durable=True)
     channel.basic_consume(queue="ropa", on_message_callback=consumer_callback, auto_ack=True)
     channel.start_consuming()  # Inicia la escucha de mensajes en RabbitMQ
 

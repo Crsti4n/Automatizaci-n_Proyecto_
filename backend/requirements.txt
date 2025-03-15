@@ -3,3 +3,5 @@ uvicorn
 pika
 websockets
 pytest
+psycopg2
+sqlalchemy  

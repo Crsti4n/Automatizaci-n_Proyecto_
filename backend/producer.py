@@ -13,7 +13,7 @@ connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq-co
 channel = connection.channel()
 
 # Declarar la cola
-channel.queue_declare(queue='ropa')
+channel.queue_declare(queue='ropa', durable=True)
 
 def generar_ropa():
     """Genera un objeto de ropa con datos aleatorios"""
@@ -28,7 +28,13 @@ def generar_ropa():
 for i in range(10):
     ropa = generar_ropa()
     message = json.dumps(ropa)  # Convertir a JSON
-    channel.basic_publish(exchange='', routing_key='ropa', body=message)
+    channel.basic_publish(
+    exchange='',
+    routing_key='ropa',
+    body=message,
+    properties=pika.BasicProperties(delivery_mode=2)  # Hacer el mensaje persistente
+)
+
     print(f"[x] Enviado: {message}")
     time.sleep(2)  # Pausa de 2 segundos entre envíos
 
