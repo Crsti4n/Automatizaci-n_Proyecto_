@@ -6,3 +6,4 @@ pytest
 psycopg2
 sqlalchemy  
 httpx
+pytest-asyncio
