@@ -1,27 +1,36 @@
+import sys
+sys.path.append("/backend")
+
 import json
+import pytest
+from unittest.mock import patch
 from consumer1 import callback as callback1
 from consumer2 import callback as callback2
 
-def test_callback_consumer1():
-    """Verifica que el consumidor 1 procese correctamente el mensaje."""
-    test_message = {
+@pytest.fixture
+def test_message1():
+    return json.dumps({
         "tipo": "Camiseta",
         "color": "Rojo",
         "talla": "M",
         "precio": 25.99
-    }
-    body = json.dumps(test_message)
-    callback1(None, None, None, body.encode('utf-8'))
-    assert True  # Si no hay errores, la prueba pasa
+    }).encode("utf-8")
 
-def test_callback_consumer2():
-    """Verifica que el consumidor 2 procese correctamente el mensaje."""
-    test_message = {
+@pytest.fixture
+def test_message2():
+    return json.dumps({
         "tipo": "Sombrero",
         "color": "Negro",
         "talla": "L",
         "precio": 39.99
-    }
-    body = json.dumps(test_message)
-    callback2(None, None, None, body.encode('utf-8'))
-    assert True  # Si no hay errores, la prueba pasa
+    }).encode("utf-8")
+
+@patch("consumer1.enviar_websocket", return_value=None)
+def test_callback_consumer1(mock_ws, test_message1):
+    callback1(None, None, None, test_message1)
+    mock_ws.assert_called_once()
+
+@patch("consumer2.enviar_websocket", return_value=None)
+def test_callback_consumer2(mock_ws, test_message2):
+    callback2(None, None, None, test_message2)
+    mock_ws.assert_called_once()

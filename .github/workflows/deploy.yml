@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
-      
+
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
@@ -25,6 +25,7 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
+          pip install httpx
 
       - name: Ejecutar Pruebas Unitarias
         run: |
@@ -59,7 +60,7 @@ jobs:
           pip install -r requirements.txt
           
       - name: Esperar a que BD y RabbitMQ estén listos
-        run: sleep 10
+        run: sleep 15  # Se aumentó a 15 segundos para más estabilidad
 
       - name: Crear tabla en PostgreSQL
         run: |
@@ -105,7 +106,7 @@ jobs:
           docker-compose up -d --build
 
       - name: Esperar a que los servicios estén listos
-        run: sleep 15
+        run: sleep 20  # Se aumentó el tiempo de espera
 
       - name: Ejecutar Pruebas E2E con Playwright
         run: |

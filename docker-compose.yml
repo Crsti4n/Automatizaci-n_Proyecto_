@@ -39,6 +39,7 @@ services:
       - rabbitmq
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/mydb
+      PYTHONPATH: /backend  # 🔥 Agregado para evitar errores de importación
     ports:
       - "8000:8000"
     volumes:
