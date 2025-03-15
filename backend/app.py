@@ -1,10 +1,47 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
 import asyncio  # Para manejo de eventos asíncronos
 import json  # Para manejar los datos en formato JSON
 import pika  # Cliente de RabbitMQ
 import threading  # Para ejecutar el consumidor en paralelo
+from sqlalchemy import create_engine, Column, Integer, String, Float
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
 
-app = FastAPI()  # Crear una instancia de la aplicación FastAPI
+# ================================
+# Configuración de la Base de Datos PostgreSQL
+# ================================
+DATABASE_URL = "postgresql://user:password@db:5432/mydb"
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+Base = declarative_base()
+
+# Modelo de la tabla "ropa"
+class Ropa(Base):
+    __tablename__ = "ropa"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tipo = Column(String(50))
+    color = Column(String(50))
+    talla = Column(String(10))
+    precio = Column(Float)
+
+# Crear las tablas en la BD
+Base.metadata.create_all(bind=engine)
+
+# Dependencia para obtener la sesión de BD en cada solicitud
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# ================================
+# Configuración de la Aplicación FastAPI
+# ================================
+app = FastAPI()
 
 # Listas de clientes WebSocket conectados
 clients_consumer1 = []
@@ -74,6 +111,18 @@ def consumer_callback(ch, method, properties, body):
     elif tipo_producto in ["sombrero", "zapatos"]:
         asyncio.run(send_to_clients(json.dumps(producto), clients_consumer2, "Consumer 2"))
 
+    # Guardar mensaje en la base de datos
+    db = SessionLocal()
+    nuevo_producto = Ropa(
+        tipo=producto["tipo"],
+        color=producto["color"],
+        talla=producto["talla"],
+        precio=producto["precio"]
+    )
+    db.add(nuevo_producto)
+    db.commit()
+    db.close()
+
 def start_consumer():
     """Se conecta a RabbitMQ y escucha la cola 'ropa' en un hilo separado"""
     connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq-container"))
@@ -85,7 +134,23 @@ def start_consumer():
 # Ejecutar el consumidor en un hilo separado para no bloquear FastAPI
 threading.Thread(target=start_consumer, daemon=True).start()
 
+# ================================
+# Endpoints para interactuar con PostgreSQL
+# ================================
+@app.get("/productos/")
+def obtener_productos(db: Session = Depends(get_db)):
+    """Obtiene todos los productos almacenados en la BD"""
+    productos = db.query(Ropa).all()
+    return productos
+
+@app.post("/productos/")
+def agregar_producto(tipo: str, color: str, talla: str, precio: float, db: Session = Depends(get_db)):
+    """Agrega un nuevo producto a la BD"""
+    nuevo_producto = Ropa(tipo=tipo, color=color, talla=talla, precio=precio)
+    db.add(nuevo_producto)
+    db.commit()
+    return {"message": "Producto agregado correctamente"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-

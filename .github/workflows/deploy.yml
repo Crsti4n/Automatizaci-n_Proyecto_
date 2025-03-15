@@ -30,7 +30,7 @@ jobs:
         run: |
           cd backend
           pytest --junitxml=report.xml
-
+          
   integration-tests:
     name: Test BD y RabbitMQ
     runs-on: ubuntu-latest
@@ -53,10 +53,30 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v4
 
-      - name: Pruebas de Integración
+      - name: Instalar dependencias
         run: |
           cd backend
-          pytest tests/integration --junitxml=report.xml
+          pip install -r requirements.txt
+          
+      - name: Crear tabla en PostgreSQL
+        run: |
+          docker exec postgres psql -U user -d testdb -c "
+          CREATE TABLE IF NOT EXISTS ropa (
+              id SERIAL PRIMARY KEY,
+              tipo VARCHAR(50),
+              color VARCHAR(50),
+              talla VARCHAR(10),
+              precio DECIMAL(10,2)
+          );"
+      
+      - name: Insertar producto en BD
+        run: |
+          docker exec postgres psql -U user -d testdb -c "
+          INSERT INTO ropa (tipo, color, talla, precio) VALUES ('Camiseta', 'Azul', 'M', 25.99);"
+
+      - name: Consultar productos en BD
+        run: |
+          docker exec postgres psql -U user -d testdb -c "SELECT * FROM ropa;"
 
   deploy:
     name: Deploy & E2E Tests
