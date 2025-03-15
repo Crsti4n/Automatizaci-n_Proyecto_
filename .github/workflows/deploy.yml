@@ -40,6 +40,8 @@ jobs:
         run: sleep 15  # Ajusta el tiempo según sea necesario
 
       - name: Ejecutar Pruebas Unitarias
+        env:
+          DATABASE_URL: postgresql://user:password@localhost:5432/mydb
         run: |
           cd backend
           pytest tests/test_api.py tests/test_consumidores.py --junitxml=report_unit.xml
