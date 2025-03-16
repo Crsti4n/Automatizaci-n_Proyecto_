@@ -25,12 +25,11 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
-          pip install httpx pytest-asyncio
 
-      - name: Ejecutar Pruebas Unitarias
+      - name: Ejecutar Pruebas Unitarias sin BD
         run: |
           cd backend
-          pytest tests/test_message_format.py tests/test_websocket.py --junitxml=report_unit.xml
+          TEST_MODE=1 pytest tests/ --junitxml=report_unit.xml
           
   integration-tests:
     name: Test BD y RabbitMQ
