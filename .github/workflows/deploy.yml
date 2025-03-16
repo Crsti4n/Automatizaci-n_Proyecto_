@@ -98,29 +98,31 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y docker-compose
 
+      - name: Crear red Docker manualmente (si no existe)
+        run: docker network create app-network || true
+
       - name: Levantar backend y frontend
-        run: |
-          docker-compose up -d backend frontend
+        run: docker-compose up -d backend frontend  # 🔹 Asegurar que backend y frontend están corriendo
 
       - name: Verificar si los contenedores están corriendo
-        run: docker ps
+        run: docker ps -a
 
       - name: Esperar a que los servicios estén listos
-        run: sleep 30  # 🔥 Se aumentó el tiempo de espera para garantizar que todo esté listo
+        run: sleep 20  
 
       - name: Verificar conexión en la red de Docker
-        run: docker network inspect app-network
+        run: docker network inspect app-network || (echo "Red no encontrada" && exit 1)
 
       - name: Instalar dependencias
         run: |
           cd vue-app
           npm install
-          npx playwright install --with-deps
+          npx playwright install --with-deps  # 🔹 Instalar navegadores de Playwright
 
       - name: Ejecutar Pruebas e2e con Playwright
         run: |
           cd vue-app
-          npx playwright test --headless
+          npx playwright test 
 
       - name: Apagar servicios
-        run: docker-compose down -v  # 🔥 Se eliminan volúmenes para evitar errores en siguientes ejecuciones
+        run: docker-compose down
