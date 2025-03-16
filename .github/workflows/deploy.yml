@@ -89,26 +89,6 @@ jobs:
     name: Pruebas End-to-End con Playwright
     runs-on: ubuntu-latest
     needs: integration-tests
-    services:
-      postgres:
-        image: postgres:latest
-        env:
-          POSTGRES_USER: user
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: testdb
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U user -d testdb"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      rabbitmq:
-        image: rabbitmq:3-management
-        ports:
-          - 5672:5672
-          - 15672:15672
 
     steps:
       - name: Checkout código
@@ -124,26 +104,12 @@ jobs:
           cd vue-app
           npx playwright install --with-deps
 
-      - name: Crear red Docker
-        run: docker network create app-network
-
-      - name: Construir la imagen del backend
+      - name: Levantar todos los servicios con Docker Compose
         run: |
-          docker build -t my-backend-image ./backend
+          docker-compose up -d
 
-      - name: Iniciar Backend con Docker
-        run: |
-          docker run -d --name backend-container \
-            --network=app-network \
-            -e DATABASE_URL=postgresql://user:password@postgres:5432/testdb \
-            -p 8000:8000 \
-            my-backend-image
-
-      - name: Esperar a que el backend esté listo
-        run: sleep 10
-
-      - name: Conectar contenedor de Playwright a la red
-        run: docker network connect app-network $(docker ps -qf "name=playwright")
+      - name: Esperar a que los servicios estén listos
+        run: sleep 15
 
       - name: Ejecutar Pruebas E2E
         run: |
@@ -157,5 +123,4 @@ jobs:
           path: vue-app/playwright-report
 
       - name: Detener y eliminar contenedores
-        run: |
-          docker stop backend-container && docker rm backend-container
+        run: docker-compose down
