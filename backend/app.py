@@ -10,7 +10,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session
 # ================================
 # Configuración de la Base de Datos PostgreSQL
 # ================================
-DATABASE_URL = "postgresql://user:password@db:5432/mydb"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@postgres-db:5432/mydb") #DATABASE_URL = "postgresql://user:password@db:5432/mydb"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
