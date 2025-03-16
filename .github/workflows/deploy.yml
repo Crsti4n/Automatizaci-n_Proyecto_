@@ -110,18 +110,6 @@ jobs:
           - 5672:5672
           - 15672:15672
 
-      backend:
-        build: ./backend
-        ports:
-          - 8000:8000
-        env:
-          DATABASE_URL: postgresql://user:password@postgres:5432/testdb
-        options: >-
-          --health-cmd "curl -f http://localhost:8000/health || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -136,6 +124,17 @@ jobs:
           cd vue-app
           npx playwright install --with-deps
 
+      - name: Iniciar Backend con Docker
+        run: |
+          docker run -d --name backend-container \
+            --network=host \
+            -e DATABASE_URL=postgresql://user:password@localhost:5432/testdb \
+            -p 8000:8000 \
+            my-backend-image
+
+      - name: Esperar a que el backend esté listo
+        run: sleep 10
+
       - name: Ejecutar Pruebas E2E
         run: |
           cd vue-app
@@ -146,3 +145,6 @@ jobs:
         with:
           name: playwright-report
           path: vue-app/playwright-report
+
+      - name: Detener y eliminar contenedores
+        run: docker stop backend-container && docker rm backend-container
