@@ -1,0 +1,22 @@
+import { test, expect } from '@playwright/test';
+
+test('Depuración de WebSocket y DOM', async ({ page }) => {
+  await page.goto('http://localhost:5173');
+  console.log("🟢 Página cargada");
+
+  // Esperar a que la tabla tenga filas con contenido
+  await page.waitForFunction(() => {
+    const tableBody = document.querySelector('.p-datatable tbody');
+    return tableBody && tableBody.innerText.trim().length > 0;
+  }, { timeout: 30000 });
+
+  // Obtener estado de la tabla
+  const contenidoTabla = await page.evaluate(() => {
+    const tableBody = document.querySelector('.p-datatable tbody');
+    return tableBody ? tableBody.innerText : '❌ Tabla vacía';
+  });
+
+  console.log("📌 Estado actual de la tabla:", contenidoTabla);
+
+  expect(contenidoTabla).not.toBe('❌ Tabla vacía');
+});
