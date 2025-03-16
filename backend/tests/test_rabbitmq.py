@@ -1,9 +1,15 @@
 import pika
 import json
+import os
 import time
 
-RABBITMQ_HOST = "localhost"  # ⚠️ Cambiado de "rabbitmq-container" a "localhost"
-TEST_QUEUE_NAME = "ropa_test"
+# Detectar si estamos en GitHub Actions
+IS_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
+
+# Configuración dinámica del host de RabbitMQ
+RABBITMQ_HOST = "localhost" if IS_GITHUB_ACTIONS else "rabbitmq-container"  # Usa localhost en GitHub Actions, pero rabbitmq-container en local
+
+TEST_QUEUE_NAME = "ropa_test"  # Cola exclusiva para pruebas
 
 def test_rabbitmq_publish_consume():
     """Prueba publicar y consumir un mensaje en una cola exclusiva de RabbitMQ."""
@@ -18,7 +24,7 @@ def test_rabbitmq_publish_consume():
         except pika.exceptions.AMQPConnectionError:
             retries -= 1
             time.sleep(3)
-    assert connection is not None, "❌ No se pudo conectar a RabbitMQ después de varios intentos"
+    assert connection is not None, f"❌ No se pudo conectar a RabbitMQ en {RABBITMQ_HOST} después de varios intentos"
 
     channel = connection.channel()
 
@@ -35,7 +41,7 @@ def test_rabbitmq_publish_consume():
         body=json.dumps(test_message),
         properties=pika.BasicProperties(delivery_mode=2)
     )
-    print("✅ Mensaje enviado a RabbitMQ en la cola de prueba")
+    print(f"✅ Mensaje enviado a RabbitMQ ({RABBITMQ_HOST}) en la cola de prueba")
 
     # 🔹 Esperar a que el mensaje esté disponible
     time.sleep(3)
@@ -51,7 +57,7 @@ def test_rabbitmq_publish_consume():
         time.sleep(1)
         retries -= 1
 
-    assert received_message is not None, "❌ No se recibió el mensaje en RabbitMQ"
+    assert received_message is not None, f"❌ No se recibió el mensaje en RabbitMQ ({RABBITMQ_HOST})"
 
     print(f"✅ Mensaje recibido en la cola de prueba: {received_message}")
 

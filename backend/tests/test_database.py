@@ -1,14 +1,20 @@
 import pytest
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import os
 import time
 
-# Datos de conexión a PostgreSQL (GitHub Actions usa localhost)
+# Detectar si estamos en GitHub Actions
+IS_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
+
+# Configuración dinámica del host de PostgreSQL
+DB_HOST = "localhost" if IS_GITHUB_ACTIONS else "postgres-db"  # 🔹 Usar siempre postgres-db en local
+
 DB_CONFIG = {
-    "dbname": "testdb",  # Se usa 'testdb' porque en GitHub Actions se crea como testdb
+    "dbname": "testdb",
     "user": "user",
     "password": "password",
-    "host": "localhost",  # ⚠️ Cambiado de 'db' a 'localhost'
+    "host": DB_HOST,
     "port": "5432"
 }
 
@@ -22,10 +28,11 @@ def db_connection():
             yield conn
             conn.close()
             break
-        except psycopg2.OperationalError:
+        except psycopg2.OperationalError as e:
+            print(f"❌ Error de conexión a PostgreSQL ({DB_HOST}): {e}")
             retries -= 1
             time.sleep(3)
-    assert retries > 0, "❌ No se pudo conectar a PostgreSQL después de varios intentos"
+    assert retries > 0, f"❌ No se pudo conectar a PostgreSQL en {DB_HOST} después de varios intentos"
 
 def test_insert_and_fetch_data(db_connection):
     """Prueba insertar y recuperar datos en la tabla ropa."""
