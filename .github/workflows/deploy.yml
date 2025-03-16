@@ -124,6 +124,10 @@ jobs:
           cd vue-app
           npx playwright install --with-deps
 
+      - name: Construir la imagen del backend
+        run: |
+          docker build -t my-backend-image ./backend
+
       - name: Iniciar Backend con Docker
         run: |
           docker run -d --name backend-container \
@@ -147,4 +151,5 @@ jobs:
           path: vue-app/playwright-report
 
       - name: Detener y eliminar contenedores
-        run: docker stop backend-container && docker rm backend-container
+        run: |
+          docker stop backend-container && docker rm backend-container
