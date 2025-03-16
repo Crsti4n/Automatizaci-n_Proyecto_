@@ -26,7 +26,7 @@ jobs:
           cd backend
           pip install -r requirements.txt
 
-      - name: Ejecutar Pruebas Unitarias
+      - name: Ejecutar Pruebas Unitarias (sin BD)
         run: |
           cd backend
           pytest tests/test_message_format.py tests/test_websocket.py --junitxml=report_unit.xml

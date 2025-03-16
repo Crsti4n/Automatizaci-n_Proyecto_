@@ -1,9 +1,6 @@
-import sys
-sys.path.append("/backend")  # Asegurar que backend esté en el path
-
-import pytest
+from app import send_to_clients  # Asegura que no se ejecuta `Base.metadata.create_all()`
 from unittest.mock import AsyncMock
-from app import send_to_clients
+import pytest
 
 @pytest.mark.asyncio
 async def test_websocket_error():

@@ -4,8 +4,7 @@ import json  # Para manejar los datos en formato JSON
 import pika  # Cliente de RabbitMQ
 import threading  # Para ejecutar el consumidor en paralelo
 from sqlalchemy import create_engine, Column, Integer, String, Float
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 # ================================
 # Configuración de la Base de Datos PostgreSQL
@@ -27,8 +26,9 @@ class Ropa(Base):
     talla = Column(String(10))
     precio = Column(Float)
 
-# Crear las tablas en la BD
-Base.metadata.create_all(bind=engine)
+# Función para inicializar la base de datos (solo cuando sea necesario)
+def init_db():
+    Base.metadata.create_all(bind=engine)
 
 # Dependencia para obtener la sesión de BD en cada solicitud
 def get_db():
@@ -151,6 +151,10 @@ def agregar_producto(tipo: str, color: str, talla: str, precio: float, db: Sessi
     db.commit()
     return {"message": "Producto agregado correctamente"}
 
+# ================================
+# Iniciar la aplicación
+# ================================
 if __name__ == "__main__":
+    init_db()  # Se ejecuta solo cuando se ejecuta directamente
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
