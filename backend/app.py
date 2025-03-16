@@ -84,7 +84,7 @@ async def send_to_clients(message, clients, consumer_name):
         print(f"⚠️ No hay clientes conectados en {consumer_name}.")
         return
 
-    disconnected_clients = set()
+    disconnected_clients = []  # ✅ Lista en vez de set
 
     for client in clients:
         try:
@@ -92,9 +92,11 @@ async def send_to_clients(message, clients, consumer_name):
             print(f"✅ Mensaje enviado correctamente a {consumer_name}")
         except Exception as e:
             print(f"❌ Error enviando mensaje a {consumer_name}: {e}")
-            disconnected_clients.add(client)
+            disconnected_clients.append(client)  # ✅ Agregar clientes desconectados a la lista
 
-    clients.difference_update(disconnected_clients)
+    # ✅ Usar remove() en lugar de difference_update()
+    for client in disconnected_clients:
+        clients.remove(client)  # ✅ Esto sí funciona con listas
 
 def consumer_callback(ch, method, properties, body):
     """Procesa mensajes de RabbitMQ y los reenvía a los WebSockets"""
