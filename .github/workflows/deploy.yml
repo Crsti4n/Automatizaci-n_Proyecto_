@@ -85,63 +85,63 @@ jobs:
           cd backend
           pytest tests/test_database.py tests/test_rabbitmq.py --junitxml=report_integration.xml
 
-e2e-tests:
-  name: Ejecutar Pruebas e2e con Playwright
-  runs-on: ubuntu-latest
-  needs: integration-tests
-  steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
+  e2e-tests:
+    name: Ejecutar Pruebas e2e con Playwright
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
 
-    - name: Instalar Docker Compose
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y docker-compose
+      - name: Instalar Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
 
-    - name: Crear red Docker manualmente (si no existe)
-      run: docker network create app-network || true
+      - name: Crear red Docker manualmente (si no existe)
+        run: docker network create app-network || true
 
-    - name: Levantar backend y frontend
-      run: docker-compose up -d backend frontend  # 🔹 Asegurar que backend y frontend están corriendo
+      - name: Levantar backend y frontend
+        run: docker-compose up -d backend frontend  # 🔹 Asegurar que backend y frontend están corriendo
 
-    - name: Verificar si los contenedores están corriendo
-      run: docker ps -a  # 🔍 Ver lista de contenedores activos (debugging)
+      - name: Verificar si los contenedores están corriendo
+        run: docker ps -a  # 🔍 Ver lista de contenedores activos (debugging)
 
-    - name: Verificar logs del backend
-      run: docker logs python-backend  # 🔍 Para ver si hay errores en el backend antes de correr pruebas
+      - name: Verificar logs del backend
+        run: docker logs python-backend  # 🔍 Para ver si hay errores en el backend antes de correr pruebas
 
-    - name: Esperar a que los servicios estén listos
-      run: sleep 20  
+      - name: Esperar a que los servicios estén listos
+        run: sleep 20  
 
-    - name: Verificar conexión con el backend desde 'vue-frontend'
-      run: |
-        ATTEMPTS=20
-        for i in $(seq 1 $ATTEMPTS); do
-          echo "⏳ Esperando que el backend esté disponible... (Intento $i/$ATTEMPTS)"
-          if docker exec vue-frontend curl -sSf http://python-backend:8000/docs > /dev/null; then
-            echo "✅ Backend está listo"
-            exit 0
-          fi
-          sleep 3
-        done
-        echo "❌ El backend no se levantó a tiempo"
-        exit 1
+      - name: Verificar conexión con el backend desde 'vue-frontend'
+        run: |
+          ATTEMPTS=20
+          for i in $(seq 1 $ATTEMPTS); do
+            echo "⏳ Esperando que el backend esté disponible... (Intento $i/$ATTEMPTS)"
+            if docker exec vue-frontend curl -sSf http://python-backend:8000/docs > /dev/null; then
+              echo "✅ Backend está listo"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "❌ El backend no se levantó a tiempo"
+          exit 1
 
-    - name: Verificar API manualmente antes de Playwright
-      run: |
-        echo "🔍 Probando la API antes de ejecutar Playwright..."
-        docker exec vue-frontend curl -X POST "http://python-backend:8000/productos/" \
-          -H "Content-Type: application/json" \
-          -d '{"tipo": "Chaqueta", "color": "Negro", "talla": "M", "precio": 79.99}' \
-          -v
+      - name: Verificar API manualmente antes de Playwright
+        run: |
+          echo "🔍 Probando la API antes de ejecutar Playwright..."
+          docker exec vue-frontend curl -X POST "http://python-backend:8000/productos/" \
+            -H "Content-Type: application/json" \
+            -d '{"tipo": "Chaqueta", "color": "Negro", "talla": "M", "precio": 79.99}' \
+            -v
 
-    - name: Instalar dependencias en vue-frontend
-      run: |
-        docker exec vue-frontend npm install
-        docker exec vue-frontend npx playwright install --with-deps  # 🔹 Instalar navegadores de Playwright
+      - name: Instalar dependencias en vue-frontend
+        run: |
+          docker exec vue-frontend npm install
+          docker exec vue-frontend npx playwright install --with-deps  # 🔹 Instalar navegadores de Playwright
 
-    - name: Ejecutar Pruebas e2e con Playwright dentro del contenedor
-      run: docker exec vue-frontend npx playwright test
+      - name: Ejecutar Pruebas e2e con Playwright dentro del contenedor
+        run: docker exec vue-frontend npx playwright test
 
-    - name: Apagar servicios
-      run: docker-compose down
+      - name: Apagar servicios
+        run: docker-compose down
