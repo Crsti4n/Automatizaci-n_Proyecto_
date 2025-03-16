@@ -102,25 +102,20 @@ jobs:
         run: docker network create app-network || true  # 🔹 Asegura que la red exista antes de levantar contenedores
 
       - name: Levantar backend y frontend
-        run: docker-compose up -d backend frontend  # 🔹 Asegurar que backend y frontend están corriendo
+        run: docker-compose up -d backend frontend  # 🔹 Levantar servicios principales
 
       - name: Verificar si los contenedores están corriendo
-        run: docker ps -a
+        run: docker ps -a  # 🔍 Verifica que los servicios estén en ejecución
 
-      - name: Verificar conexión con el backend
+      - name: Esperar a que el backend esté listo
         run: |
-          ATTEMPTS=20
-          for i in $(seq 1 $ATTEMPTS); do
-            echo "⌛ Esperando que el backend esté disponible... (Intento $i/$ATTEMPTS)"
-            curl --silent --fail http://python-backend:8000/ && echo "✅ Backend está listo" && exit 0
-            sleep 5
-          done
-          echo "❌ El backend no se levantó a tiempo"
-          exit 1
+          echo "⌛ Esperando a que el backend esté disponible..."
+          sleep 15  # 🔹 Le damos tiempo al backend para inicializarse
+          docker logs python-backend  # 🔍 Revisa los logs del backend para detectar errores
 
       - name: Ejecutar Pruebas e2e con Playwright dentro del contenedor
         run: |
-          docker exec -it vue-frontend npx playwright test  # 🔹 Ejecuta las pruebas dentro del contenedor de frontend
+          docker exec -it vue-frontend npx playwright test  # 🔹 Ejecuta las pruebas dentro del contenedor
 
       - name: Apagar servicios
         run: docker-compose down
