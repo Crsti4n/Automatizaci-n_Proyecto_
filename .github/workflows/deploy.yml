@@ -124,6 +124,9 @@ jobs:
           cd vue-app
           npx playwright install --with-deps
 
+      - name: Crear red Docker
+        run: docker network create app-network
+
       - name: Construir la imagen del backend
         run: |
           docker build -t my-backend-image ./backend
@@ -131,13 +134,16 @@ jobs:
       - name: Iniciar Backend con Docker
         run: |
           docker run -d --name backend-container \
-            --network=host \
-            -e DATABASE_URL=postgresql://user:password@localhost:5432/testdb \
+            --network=app-network \
+            -e DATABASE_URL=postgresql://user:password@postgres:5432/testdb \
             -p 8000:8000 \
             my-backend-image
 
       - name: Esperar a que el backend esté listo
         run: sleep 10
+
+      - name: Conectar contenedor de Playwright a la red
+        run: docker network connect app-network $(docker ps -qf "name=playwright")
 
       - name: Ejecutar Pruebas E2E
         run: |
