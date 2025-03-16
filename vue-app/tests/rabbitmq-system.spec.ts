@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('Verificar el flujo completo de RabbitMQ y la Base de Datos', async ({ request }) => {
   console.log("🚀 Iniciando prueba de RabbitMQ y BD");
 
-  const backendUrl = 'http://host.docker.internal:8000';
+  const backendUrl = "http://backend:8000"; //const backendUrl = 'http://host.docker.internal:8000';
 
   // 1️⃣ Enviar un mensaje al backend
   const mensaje = {
