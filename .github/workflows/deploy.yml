@@ -68,13 +68,10 @@ jobs:
       - name: Esperar a que BD y RabbitMQ estén listos
         run: sleep 20  
 
-      - name: Verificar que PostgreSQL está corriendo
-        run: |
-          pg_isready -h localhost -p 5432 -U user -d testdb
-
       - name: Crear tabla en PostgreSQL
         run: |
-          docker exec $(docker ps -qf "ancestor=postgres:latest") psql -U user -d testdb -c "
+          PSQL_CONTAINER_ID=$(docker ps -qf "ancestor=postgres:latest")
+          docker exec $PSQL_CONTAINER_ID psql -U user -d testdb -c "
           CREATE TABLE IF NOT EXISTS ropa (
               id SERIAL PRIMARY KEY,
               tipo VARCHAR(50),
@@ -82,15 +79,6 @@ jobs:
               talla VARCHAR(10),
               precio DECIMAL(10,2)
           );"
-      
-      - name: Insertar producto en BD
-        run: |
-          docker exec $(docker ps -qf "ancestor=postgres:latest") psql -U user -d testdb -c "
-          INSERT INTO ropa (tipo, color, talla, precio) VALUES ('Camiseta', 'Azul', 'M', 25.99);"
-
-      - name: Consultar productos en BD
-        run: |
-          docker exec $(docker ps -qf "ancestor=postgres:latest") psql -U user -d testdb -c "SELECT * FROM ropa;"
 
       - name: Ejecutar Pruebas de BD y RabbitMQ
         run: |
