@@ -86,54 +86,63 @@ jobs:
           pytest tests/test_database.py tests/test_rabbitmq.py --junitxml=report_integration.xml
 
   e2e-tests:
-    name: Ejecutar Pruebas e2e con Playwright
+    name: Pruebas End-to-End con Playwright
     runs-on: ubuntu-latest
     needs: integration-tests
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U user -d testdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - 5672:5672
+          - 15672:15672
+
+      backend:
+        build: ./backend
+        ports:
+          - 8000:8000
+        env:
+          DATABASE_URL: postgresql://user:password@postgres:5432/testdb
+        options: >-
+          --health-cmd "curl -f http://localhost:8000/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
-
-      - name: Instalar Docker Compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose
-
-      - name: Crear red Docker manualmente (si no existe)
-        run: docker network create app-network || true
-
-      - name: Levantar backend y frontend
-        run: docker-compose up -d backend frontend  # 🔹 Asegurar que backend y frontend están corriendo
-
-      - name: Verificar si los contenedores están corriendo
-        run: docker ps -a  # 🔍 Ver lista de contenedores activos (debugging)
-
-      - name: Esperar a que los servicios estén listos
-        run: sleep 20  
-
-      - name: Verificar conexión con el backend
-        run: |
-          ATTEMPTS=20
-          for i in $(seq 1 $ATTEMPTS); do
-            echo "⏳ Esperando que el backend esté disponible... (Intento $i/$ATTEMPTS)"
-            if curl -sSf http://localhost:8000/docs > /dev/null; then
-              echo "✅ Backend está listo"
-              exit 0
-            fi
-            sleep 3
-          done
-          echo "❌ El backend no se levantó a tiempo"
-          exit 1
 
       - name: Instalar dependencias
         run: |
           cd vue-app
           npm install
-          npx playwright install --with-deps  # 🔹 Instalar navegadores de Playwright
 
-      - name: Ejecutar Pruebas e2e con Playwright
+      - name: Instalar Playwright
         run: |
           cd vue-app
-          npx playwright test 
+          npx playwright install --with-deps
 
-      - name: Apagar servicios
-        run: docker-compose down
+      - name: Ejecutar Pruebas E2E
+        run: |
+          cd vue-app
+          npx playwright test --reporter=junit
+
+      - name: Guardar Reporte de Playwright
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: vue-app/playwright-report
