@@ -113,7 +113,7 @@ jobs:
       - name: Ejecutar Pruebas e2e con Playwright
         run: |
           cd vue-app
-          npx playwright test --headless  # 🔹 Ejecutar en modo sin interfaz gráfica
+          npx playwright test 
 
       - name: Apagar servicios
         run: docker-compose down
