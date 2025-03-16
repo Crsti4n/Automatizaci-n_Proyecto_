@@ -105,24 +105,24 @@ jobs:
         run: docker-compose up -d backend frontend  # 🔹 Asegurar que backend y frontend están corriendo
 
       - name: Verificar si los contenedores están corriendo
-        run: docker ps -a
+        run: docker ps -a  # 🔍 Ver lista de contenedores activos (debugging)
 
       - name: Esperar a que los servicios estén listos
         run: sleep 20  
 
       - name: Verificar conexión con el backend
         run: |
-          ATTEMPTS=10
-          until $(curl --output /dev/null --silent --head --fail http://backend:8000/productos/); do
-              echo "⏳ Esperando que el backend esté disponible..."
-              ATTEMPTS=$((ATTEMPTS - 1))
-              if [ $ATTEMPTS -le 0 ]; then
-                echo "❌ El backend no se levantó a tiempo"
-                exit 1
-              fi
-              sleep 5
+          ATTEMPTS=20
+          for i in $(seq 1 $ATTEMPTS); do
+            echo "⏳ Esperando que el backend esté disponible... (Intento $i/$ATTEMPTS)"
+            if curl -sSf http://localhost:8000/docs > /dev/null; then
+              echo "✅ Backend está listo"
+              exit 0
+            fi
+            sleep 3
           done
-          echo "✅ Backend está en línea"
+          echo "❌ El backend no se levantó a tiempo"
+          exit 1
 
       - name: Instalar dependencias
         run: |
