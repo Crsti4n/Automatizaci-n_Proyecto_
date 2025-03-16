@@ -26,10 +26,10 @@ jobs:
           cd backend
           pip install -r requirements.txt
 
-      - name: Ejecutar Pruebas Unitarias sin BD
+      - name: Ejecutar Pruebas Unitarias
         run: |
           cd backend
-          TEST_MODE=1 pytest tests/ --junitxml=report_unit.xml
+          pytest tests/test_message_format.py tests/test_websocket.py --junitxml=report_unit.xml
           
   integration-tests:
     name: Test BD y RabbitMQ
@@ -59,7 +59,7 @@ jobs:
           pip install -r requirements.txt
           
       - name: Esperar a que BD y RabbitMQ estén listos
-        run: sleep 15  # Se aumentó a 15 segundos para más estabilidad
+        run: sleep 15  
 
       - name: Crear tabla en PostgreSQL
         run: |
@@ -86,7 +86,6 @@ jobs:
           cd backend
           pytest tests/test_database.py tests/test_rabbitmq.py --junitxml=report_integration.xml
 
-
   e2e-tests:
     name: Pruebas de Sistema (E2E)
     runs-on: ubuntu-latest
@@ -105,7 +104,7 @@ jobs:
           docker-compose up -d --build
 
       - name: Esperar a que los servicios estén listos
-        run: sleep 20  # Se aumentó el tiempo de espera
+        run: sleep 20  
 
       - name: Ejecutar Pruebas E2E con Playwright
         run: |

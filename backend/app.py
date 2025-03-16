@@ -1,22 +1,20 @@
-import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
-import asyncio
-import json
-import pika
-import threading
+import asyncio  # Para manejo de eventos asíncronos
+import json  # Para manejar los datos en formato JSON
+import pika  # Cliente de RabbitMQ
+import threading  # Para ejecutar el consumidor en paralelo
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
 # ================================
-# Configuración de la Base de Datos
+# Configuración de la Base de Datos PostgreSQL
 # ================================
-TEST_MODE = os.getenv("TEST_MODE", "0")  # Si TEST_MODE=1, usa SQLite en memoria
+DATABASE_URL = "postgresql://user:password@db:5432/mydb"
 
-DATABASE_URL = "sqlite:///:memory:" if TEST_MODE == "1" else "postgresql://user:password@db:5432/mydb"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if TEST_MODE == "1" else {})
-
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
 Base = declarative_base()
 
 # Modelo de la tabla "ropa"
@@ -29,8 +27,8 @@ class Ropa(Base):
     talla = Column(String(10))
     precio = Column(Float)
 
-if TEST_MODE == "0":  # Solo crear tablas en PostgreSQL si no estamos en pruebas unitarias
-    Base.metadata.create_all(bind=engine)
+# Crear las tablas en la BD
+Base.metadata.create_all(bind=engine)
 
 # Dependencia para obtener la sesión de BD en cada solicitud
 def get_db():
@@ -51,15 +49,15 @@ clients_consumer2 = []
 
 async def websocket_handler(websocket: WebSocket, clients, consumer_name):
     """Maneja conexiones WebSocket y mantiene a los clientes en la lista."""
-    await websocket.accept()
-    clients.append(websocket)
+    await websocket.accept()  # Aceptar conexión entrante
+    clients.append(websocket)  # Agregar cliente a la lista
     print(f"🔵 Cliente conectado a {consumer_name}. Total clientes: {len(clients)}")
 
     try:
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(1)  # Mantiene la conexión abierta
     except WebSocketDisconnect:
-        clients.remove(websocket)
+        clients.remove(websocket)  # Remover cliente desconectado
         print(f"🔴 Cliente desconectado de {consumer_name}. Total clientes: {len(clients)}")
 
 # Rutas de WebSocket para consumidores
@@ -79,21 +77,23 @@ async def send_to_clients(message, clients, consumer_name):
         print(f"⚠️ No hay clientes conectados en {consumer_name}.")
         return
 
-    disconnected_clients = []
+    disconnected_clients = []  # Lista para almacenar clientes desconectados
+
     for client in clients:
         try:
-            await client.send_text(message)
+            await client.send_text(message)  # Enviar mensaje al cliente
             print(f"✅ Mensaje enviado correctamente a {consumer_name}")
         except Exception as e:
             print(f"❌ Error enviando mensaje a {consumer_name}: {e}")
             disconnected_clients.append(client)
 
+    # Remover clientes desconectados
     for client in disconnected_clients:
         clients.remove(client)
 
 def consumer_callback(ch, method, properties, body):
     """Procesa mensajes de RabbitMQ y los reenvía a los WebSockets correspondientes"""
-    producto = json.loads(body)
+    producto = json.loads(body)  # Convertir mensaje de RabbitMQ a JSON
     print(f"[x] Recibido: {producto}")
 
     try:
@@ -102,24 +102,26 @@ def consumer_callback(ch, method, properties, body):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
+    # Filtrar productos según el tipo y enviarlos al consumidor correcto
     tipo_producto = producto.get("tipo", "").lower()
+
     if tipo_producto in ["camiseta", "pantalón", "chaqueta"]:
         asyncio.run(send_to_clients(json.dumps(producto), clients_consumer1, "Consumer 1"))
+
     elif tipo_producto in ["sombrero", "zapatos"]:
         asyncio.run(send_to_clients(json.dumps(producto), clients_consumer2, "Consumer 2"))
 
-    # Guardar mensaje en la base de datos si NO estamos en modo TEST
-    if TEST_MODE == "0":
-        db = SessionLocal()
-        nuevo_producto = Ropa(
-            tipo=producto["tipo"],
-            color=producto["color"],
-            talla=producto["talla"],
-            precio=producto["precio"]
-        )
-        db.add(nuevo_producto)
-        db.commit()
-        db.close()
+    # Guardar mensaje en la base de datos
+    db = SessionLocal()
+    nuevo_producto = Ropa(
+        tipo=producto["tipo"],
+        color=producto["color"],
+        talla=producto["talla"],
+        precio=producto["precio"]
+    )
+    db.add(nuevo_producto)
+    db.commit()
+    db.close()
 
 def start_consumer():
     """Se conecta a RabbitMQ y escucha la cola 'ropa' en un hilo separado"""
@@ -127,10 +129,10 @@ def start_consumer():
     channel = connection.channel()
     channel.queue_declare(queue="ropa", durable=True)
     channel.basic_consume(queue="ropa", on_message_callback=consumer_callback, auto_ack=True)
-    channel.start_consuming()
+    channel.start_consuming()  # Inicia la escucha de mensajes en RabbitMQ
 
-if TEST_MODE == "0":  # Solo iniciar el consumidor si no estamos en pruebas
-    threading.Thread(target=start_consumer, daemon=True).start()
+# Ejecutar el consumidor en un hilo separado para no bloquear FastAPI
+threading.Thread(target=start_consumer, daemon=True).start()
 
 # ================================
 # Endpoints para interactuar con PostgreSQL
