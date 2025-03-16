@@ -127,7 +127,7 @@ jobs:
           exit 1
 
       - name: Ejecutar Pruebas e2e con Playwright dentro del contenedor
-        run: docker exec -it vue-frontend npx playwright test
+        run: docker exec vue-frontend npx playwright test
 
       - name: Apagar servicios
         run: docker-compose down
