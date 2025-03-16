@@ -140,6 +140,9 @@ jobs:
           docker exec vue-frontend npm install
           docker exec vue-frontend npx playwright install --with-deps  # 🔹 Instalar navegadores de Playwright
 
+      - name: Verificar logs del backend
+        run: docker logs python-backend
+
       - name: Ejecutar Pruebas e2e con Playwright dentro del contenedor
         run: docker exec vue-frontend npx playwright test
 
