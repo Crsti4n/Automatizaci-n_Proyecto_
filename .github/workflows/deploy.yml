@@ -44,11 +44,18 @@ jobs:
           POSTGRES_DB: testdb
         ports:
           - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U user -d testdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
       rabbitmq:
         image: rabbitmq:3-management
         ports:
           - 5672:5672
           - 15672:15672
+
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -59,11 +66,15 @@ jobs:
           pip install -r requirements.txt
           
       - name: Esperar a que BD y RabbitMQ estén listos
-        run: sleep 15  
+        run: sleep 20  
+
+      - name: Verificar que PostgreSQL está corriendo
+        run: |
+          pg_isready -h localhost -p 5432 -U user -d testdb
 
       - name: Crear tabla en PostgreSQL
         run: |
-          docker exec postgres psql -U user -d testdb -c "
+          docker exec $(docker ps -qf "ancestor=postgres:latest") psql -U user -d testdb -c "
           CREATE TABLE IF NOT EXISTS ropa (
               id SERIAL PRIMARY KEY,
               tipo VARCHAR(50),
@@ -74,12 +85,12 @@ jobs:
       
       - name: Insertar producto en BD
         run: |
-          docker exec postgres psql -U user -d testdb -c "
+          docker exec $(docker ps -qf "ancestor=postgres:latest") psql -U user -d testdb -c "
           INSERT INTO ropa (tipo, color, talla, precio) VALUES ('Camiseta', 'Azul', 'M', 25.99);"
 
       - name: Consultar productos en BD
         run: |
-          docker exec postgres psql -U user -d testdb -c "SELECT * FROM ropa;"
+          docker exec $(docker ps -qf "ancestor=postgres:latest") psql -U user -d testdb -c "SELECT * FROM ropa;"
 
       - name: Ejecutar Pruebas de BD y RabbitMQ
         run: |
