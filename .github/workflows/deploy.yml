@@ -102,10 +102,10 @@ jobs:
         run: docker network create app-network || true
 
       - name: Levantar backend y frontend
-        run: docker-compose up -d backend frontend  # 🔹 Asegurar que backend y frontend están corriendo
+        run: docker-compose up -d backend frontend  # 🔹 Levantar los servicios
 
       - name: Verificar si los contenedores están corriendo
-        run: docker ps -a  # 🔍 Ver lista de contenedores activos (debugging)
+        run: docker ps -a
 
       - name: Esperar a que los servicios estén listos
         run: sleep 20  
@@ -113,27 +113,20 @@ jobs:
       - name: Verificar conexión con el backend
         run: |
           ATTEMPTS=20
-          for i in $(seq 1 $ATTEMPTS); do
-            echo "⏳ Esperando que el backend esté disponible... (Intento $i/$ATTEMPTS)"
-            if curl -sSf http://localhost:8000/docs > /dev/null; then
-              echo "✅ Backend está listo"
-              exit 0
+          until curl -sSf http://backend:8000/productos/ > /dev/null; do
+            ((ATTEMPTS--))
+            if [ $ATTEMPTS -le 0 ]; then
+              echo "❌ El backend no se levantó a tiempo"
+              exit 1
             fi
-            sleep 3
+            echo "⏳ Esperando que el backend esté disponible... (Intento $((20 - ATTEMPTS))/20)"
+            sleep 5
           done
-          echo "❌ El backend no se levantó a tiempo"
-          exit 1
+          echo "✅ Backend está listo"
 
-      - name: Instalar dependencias
-        run: |
-          cd vue-app
-          npm install
-          npx playwright install --with-deps  # 🔹 Instalar navegadores de Playwright
-
-      - name: Ejecutar Pruebas e2e con Playwright
-        run: |
-          cd vue-app
-          npx playwright test 
+      - name: Ejecutar Pruebas e2e con Playwright dentro del contenedor
+        run: docker-compose exec frontend npx playwright test
 
       - name: Apagar servicios
         run: docker-compose down
+
