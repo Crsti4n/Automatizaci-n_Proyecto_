@@ -99,7 +99,9 @@ jobs:
           sudo apt-get install -y docker-compose
 
       - name: Crear red Docker manualmente (si no existe)
-        run: docker network create app-network || true
+        run: |
+          docker network create app-network || true
+          sleep 3  # 🔥 Esperar a que la red se propague
 
       - name: Levantar backend y frontend
         run: docker-compose up -d backend frontend  
@@ -113,15 +115,12 @@ jobs:
       - name: Esperar a que los servicios estén listos
         run: sleep 20  
 
-      - name: Verificar conexión con el backend
+      - name: Verificar conexión con el backend desde `vue-frontend`
         run: |
           ATTEMPTS=20
           for i in $(seq 1 $ATTEMPTS); do
             echo "⏳ Esperando que el backend esté disponible... (Intento $i/$ATTEMPTS)"
-            if curl -sSf http://python-backend:8000/docs > /dev/null; then
-              echo "✅ Backend está listo"
-              exit 0
-            fi
+            docker exec vue-frontend curl -sSf http://python-backend:8000/docs > /dev/null && echo "✅ Backend está listo" && exit 0
             sleep 3
           done
           echo "❌ El backend no se levantó a tiempo"
