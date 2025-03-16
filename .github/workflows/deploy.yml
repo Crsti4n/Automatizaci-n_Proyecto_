@@ -85,35 +85,35 @@ jobs:
           cd backend
           pytest tests/test_database.py tests/test_rabbitmq.py --junitxml=report_integration.xml
 
-e2e-tests:
-  name: Ejecutar Pruebas e2e con Playwright
-  runs-on: ubuntu-latest
-  needs: integration-tests
-  steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
+  e2e-tests:
+    name: Ejecutar Pruebas e2e con Playwright
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
 
-    - name: Instalar Docker Compose
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y docker-compose
+      - name: Instalar Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
 
-    - name: Levantar backend y frontend
-      run: docker-compose up -d backend frontend  # 🔹 Asegurar que backend y frontend están corriendo
+      - name: Levantar backend y frontend
+        run: docker-compose up -d backend frontend  # 🔹 Asegurar que backend y frontend están corriendo
 
-    - name: Esperar a que los servicios estén listos
-      run: sleep 20  
+      - name: Esperar a que los servicios estén listos
+        run: sleep 20  
 
-    - name: Instalar dependencias
-      run: |
-        cd vue-app
-        npm install
-        npx playwright install --with-deps  # 🔹 Instalar navegadores de Playwright
+      - name: Instalar dependencias
+        run: |
+          cd vue-app
+          npm install
+          npx playwright install --with-deps  # 🔹 Instalar navegadores de Playwright
 
-    - name: Ejecutar Pruebas e2e con Playwright
-      run: |
-        cd vue-app
-        npx playwright test --headless  # 🔹 Ejecutar en modo sin interfaz gráfica
+      - name: Ejecutar Pruebas e2e con Playwright
+        run: |
+          cd vue-app
+          npx playwright test --headless  # 🔹 Ejecutar en modo sin interfaz gráfica
 
-    - name: Apagar servicios
-      run: docker-compose down
+      - name: Apagar servicios
+        run: docker-compose down
