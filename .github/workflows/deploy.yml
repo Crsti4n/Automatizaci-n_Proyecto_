@@ -110,8 +110,19 @@ jobs:
       - name: Esperar a que los servicios estén listos
         run: sleep 20  
 
-      - name: Verificar conexión en la red de Docker
-        run: docker network inspect app-network || (echo "Red no encontrada" && exit 1)
+      - name: Verificar conexión con el backend
+        run: |
+          ATTEMPTS=10
+          until $(curl --output /dev/null --silent --head --fail http://backend:8000/productos/); do
+              echo "⏳ Esperando que el backend esté disponible..."
+              ATTEMPTS=$((ATTEMPTS - 1))
+              if [ $ATTEMPTS -le 0 ]; then
+                echo "❌ El backend no se levantó a tiempo"
+                exit 1
+              fi
+              sleep 5
+          done
+          echo "✅ Backend está en línea"
 
       - name: Instalar dependencias
         run: |
