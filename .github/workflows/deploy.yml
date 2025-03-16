@@ -86,7 +86,7 @@ jobs:
           pytest tests/test_database.py tests/test_rabbitmq.py --junitxml=report_integration.xml
 
   e2e-tests:
-    name: Ejecutar Pruebas e2e con Playwright dentro del contenedor
+    name: Ejecutar Pruebas e2e con Playwright
     runs-on: ubuntu-latest
     needs: integration-tests
     steps:
@@ -99,23 +99,41 @@ jobs:
           sudo apt-get install -y docker-compose
 
       - name: Crear red Docker manualmente (si no existe)
-        run: docker network create app-network || true  # 🔹 Asegura que la red exista antes de levantar contenedores
+        run: docker network create app-network || true
 
       - name: Levantar backend y frontend
-        run: docker-compose up -d backend frontend  # 🔹 Levantar servicios principales
+        run: docker-compose up -d backend frontend  # 🔹 Asegurar que backend y frontend están corriendo
 
       - name: Verificar si los contenedores están corriendo
-        run: docker ps -a  # 🔍 Verifica que los servicios estén en ejecución
+        run: docker ps -a  # 🔍 Ver lista de contenedores activos (debugging)
 
-      - name: Esperar a que el backend esté listo
-        run: |
-          echo "⌛ Esperando a que el backend esté disponible..."
-          sleep 15  # 🔹 Le damos tiempo al backend para inicializarse
-          docker logs python-backend  # 🔍 Revisa los logs del backend para detectar errores
+      - name: Esperar a que los servicios estén listos
+        run: sleep 20  
 
-      - name: Ejecutar Pruebas e2e con Playwright dentro del contenedor
+      - name: Verificar conexión con el backend
         run: |
-          docker exec -it vue-frontend npx playwright test  # 🔹 Ejecuta las pruebas dentro del contenedor
+          ATTEMPTS=20
+          for i in $(seq 1 $ATTEMPTS); do
+            echo "⏳ Esperando que el backend esté disponible... (Intento $i/$ATTEMPTS)"
+            if curl -sSf http://localhost:8000/docs > /dev/null; then
+              echo "✅ Backend está listo"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "❌ El backend no se levantó a tiempo"
+          exit 1
+
+      - name: Instalar dependencias
+        run: |
+          cd vue-app
+          npm install
+          npx playwright install --with-deps  # 🔹 Instalar navegadores de Playwright
+
+      - name: Ejecutar Pruebas e2e con Playwright
+        run: |
+          cd vue-app
+          npx playwright test 
 
       - name: Apagar servicios
         run: docker-compose down
