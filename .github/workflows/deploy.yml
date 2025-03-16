@@ -101,8 +101,8 @@ jobs:
       - name: Crear red Docker manualmente (si no existe)
         run: docker network create app-network || true
 
-      - name: Levantar backend y frontend
-        run: docker-compose up -d backend frontend  # 🔹 Levantar los servicios
+      - name: Levantar todos los servicios
+        run: docker-compose up -d  # 🔹 Levantar TODOS los servicios
 
       - name: Verificar si los contenedores están corriendo
         run: docker ps -a
@@ -113,7 +113,7 @@ jobs:
       - name: Verificar conexión con el backend
         run: |
           ATTEMPTS=20
-          until curl -sSf http://backend:8000/productos/ > /dev/null; do
+          until curl -sSf http://python-backend:8000/productos/ > /dev/null; do
             ((ATTEMPTS--))
             if [ $ATTEMPTS -le 0 ]; then
               echo "❌ El backend no se levantó a tiempo"
@@ -129,4 +129,3 @@ jobs:
 
       - name: Apagar servicios
         run: docker-compose down
-
