@@ -21,6 +21,10 @@ test('Verificar el flujo completo de RabbitMQ y la Base de Datos', async ({ requ
     data: mensaje
   });
 
+  // 🛑 Agregando logs para depuración
+  console.log(`🛑 Código de respuesta: ${response.status()}`); // Muestra el código HTTP
+  console.log(`🔍 Respuesta completa:`, await response.text()); // Muestra la respuesta en texto
+
   expect(response.ok()).toBeTruthy();
   console.log("✅ Mensaje enviado correctamente");
 
