@@ -86,7 +86,7 @@ jobs:
           pytest tests/test_database.py tests/test_rabbitmq.py --junitxml=report_integration.xml
 
   e2e-tests:
-    name: Ejecutar Pruebas e2e con Playwright
+    name: Ejecutar Pruebas e2e con Playwright dentro del contenedor
     runs-on: ubuntu-latest
     needs: integration-tests
     steps:
@@ -99,33 +99,28 @@ jobs:
           sudo apt-get install -y docker-compose
 
       - name: Crear red Docker manualmente (si no existe)
-        run: docker network create app-network || true
+        run: docker network create app-network || true  # 🔹 Asegura que la red exista antes de levantar contenedores
 
-      - name: Levantar todos los servicios
-        run: docker-compose up -d  # 🔹 Levantar TODOS los servicios
+      - name: Levantar backend y frontend
+        run: docker-compose up -d backend frontend  # 🔹 Asegurar que backend y frontend están corriendo
 
       - name: Verificar si los contenedores están corriendo
         run: docker ps -a
 
-      - name: Esperar a que los servicios estén listos
-        run: sleep 20  
-
       - name: Verificar conexión con el backend
         run: |
           ATTEMPTS=20
-          until curl -sSf http://python-backend:8000/productos/ > /dev/null; do
-            ((ATTEMPTS--))
-            if [ $ATTEMPTS -le 0 ]; then
-              echo "❌ El backend no se levantó a tiempo"
-              exit 1
-            fi
-            echo "⏳ Esperando que el backend esté disponible... (Intento $((20 - ATTEMPTS))/20)"
+          for i in $(seq 1 $ATTEMPTS); do
+            echo "⌛ Esperando que el backend esté disponible... (Intento $i/$ATTEMPTS)"
+            curl --silent --fail http://python-backend:8000/ && echo "✅ Backend está listo" && exit 0
             sleep 5
           done
-          echo "✅ Backend está listo"
+          echo "❌ El backend no se levantó a tiempo"
+          exit 1
 
       - name: Ejecutar Pruebas e2e con Playwright dentro del contenedor
-        run: docker-compose exec frontend npx playwright test
+        run: |
+          docker exec -it vue-frontend npx playwright test  # 🔹 Ejecuta las pruebas dentro del contenedor de frontend
 
       - name: Apagar servicios
         run: docker-compose down
